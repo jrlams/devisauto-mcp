@@ -1,110 +1,153 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+server.registerResource(...) avec mimeType: "text/html+skybridge"
+_meta: { "openai/outputTemplate": "ui://widget/devis.html" } dans la réponse de l'outil
+
+GitHub → api/mcp.js → ✏️ Edit → remplace tout :
+javascriptimport { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
 
-// ─── UI Widget HTML (Apps SDK OpenAI) ────────────────────────────
-function buildDevisWidget(data) {
-  return `<!DOCTYPE html>
+// ─── Widget HTML ──────────────────────────────────────────────────
+const DEVIS_WIDGET_HTML = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-         background: transparent; padding: 16px; }
+         background: transparent; padding: 12px; }
   .card { background: #fff; border-radius: 16px; padding: 20px;
-          box-shadow: 0 2px 16px rgba(0,0,0,0.10); max-width: 480px; }
-  .header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
-  .logo { font-size: 28px; }
-  .title { font-size: 18px; font-weight: 700; color: #1a1a1a; }
-  .subtitle { font-size: 12px; color: #888; }
-  .ref { background: #f0f7ff; border-radius: 8px; padding: 8px 12px;
-         font-size: 12px; color: #0066cc; font-weight: 600; margin-bottom: 16px; }
-  .section { margin-bottom: 14px; }
-  .section-title { font-size: 11px; font-weight: 700; color: #888;
-                   text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-  .row { display: flex; justify-content: space-between; padding: 4px 0;
-         border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+          box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  .header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .logo { font-size: 26px; }
+  .app-title { font-size: 17px; font-weight: 700; color: #1a1a1a; }
+  .app-sub { font-size: 11px; color: #999; }
+  .ref-badge { background: #f0f7ff; border-radius: 8px; padding: 6px 12px;
+               font-size: 12px; color: #0066cc; font-weight: 600; margin-bottom: 14px; }
+  .section { margin-bottom: 12px; }
+  .section-title { font-size: 10px; font-weight: 700; color: #aaa;
+                   text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 5px; }
+  .row { display: flex; justify-content: space-between; padding: 3px 0;
+         font-size: 13px; border-bottom: 1px solid #f5f5f5; }
   .row:last-child { border-bottom: none; }
-  .label { color: #666; }
-  .value { font-weight: 600; color: #1a1a1a; }
-  .formule-badge { display: inline-block; background: #e8f5e9; color: #2e7d32;
-                   border-radius: 20px; padding: 4px 12px; font-size: 12px;
-                   font-weight: 700; margin-bottom: 14px; }
-  .prix { text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border-radius: 12px; padding: 16px; color: white; margin-top: 4px; }
-  .prix-annuel { font-size: 28px; font-weight: 800; }
-  .prix-mensuel { font-size: 14px; opacity: 0.85; margin-top: 2px; }
-  .options { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-  .option-tag { background: #f0f0f0; border-radius: 20px; padding: 3px 10px;
-                font-size: 11px; color: #555; }
-  .valid { text-align: center; font-size: 11px; color: #aaa; margin-top: 12px; }
+  .label { color: #777; }
+  .value { font-weight: 600; color: #222; }
+  .formule { display: inline-block; background: #e8f5e9; color: #2e7d32;
+             border-radius: 20px; padding: 3px 12px; font-size: 12px; font-weight: 700; }
+  .options { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+  .opt { background: #f5f5f5; border-radius: 20px; padding: 2px 9px;
+         font-size: 11px; color: #555; }
+  .prix-box { text-align: center; background: linear-gradient(135deg,#667eea,#764ba2);
+              border-radius: 12px; padding: 14px; color: #fff; margin-top: 8px; }
+  .prix-annuel { font-size: 26px; font-weight: 800; }
+  .prix-mensuel { font-size: 13px; opacity: 0.85; margin-top: 2px; }
+  .footer { text-align: center; font-size: 10px; color: #bbb; margin-top: 10px; }
   @media (prefers-color-scheme: dark) {
-    .card { background: #1e1e1e; }
-    .title { color: #f0f0f0; }
-    .value { color: #f0f0f0; }
-    .row { border-bottom-color: #333; }
-    .ref { background: #1a2a3a; }
-    .option-tag { background: #333; color: #ccc; }
+    .card { background: #1e1e2e; }
+    .app-title, .value { color: #eee; }
+    .row { border-bottom-color: #2a2a3a; }
+    .ref-badge { background: #1a2a4a; }
+    .opt { background: #2a2a3a; color: #ccc; }
   }
 </style>
 </head>
 <body>
-<div class="card">
+<div class="card" id="card">
   <div class="header">
     <div class="logo">🚗</div>
-    <div>
-      <div class="title">DevisAuto</div>
-      <div class="subtitle">Devis assurance automobile</div>
-    </div>
+    <div><div class="app-title">DevisAuto</div><div class="app-sub">Devis assurance automobile</div></div>
   </div>
-
-  <div class="ref">📌 Réf. ${data.ref} · ${data.date}</div>
+  <div class="ref-badge" id="ref">Chargement...</div>
 
   <div class="section">
     <div class="section-title">🚗 Véhicule</div>
-    <div class="row"><span class="label">Véhicule</span><span class="value">${data.marque} ${data.modele} ${data.annee}</span></div>
-    <div class="row"><span class="label">Carburant</span><span class="value">${data.carburant}</span></div>
-    <div class="row"><span class="label">Valeur</span><span class="value">${data.valeur} €</span></div>
+    <div class="row"><span class="label">Véhicule</span><span class="value" id="vehicule">—</span></div>
+    <div class="row"><span class="label">Carburant</span><span class="value" id="carburant">—</span></div>
+    <div class="row"><span class="label">Valeur</span><span class="value" id="valeur">—</span></div>
   </div>
 
   <div class="section">
     <div class="section-title">👤 Conducteur</div>
-    <div class="row"><span class="label">Né(e) le</span><span class="value">${data.naissance}</span></div>
-    <div class="row"><span class="label">Permis</span><span class="value">${data.permis}</span></div>
-    <div class="row"><span class="label">Bonus-malus</span><span class="value">${data.bonus} ${data.bonus <= 0.8 ? "🏆" : data.bonus <= 1 ? "✅" : "⚠️"}</span></div>
-    <div class="row"><span class="label">Usage</span><span class="value">${data.usage}</span></div>
+    <div class="row"><span class="label">Né(e) le</span><span class="value" id="naissance">—</span></div>
+    <div class="row"><span class="label">Permis</span><span class="value" id="permis">—</span></div>
+    <div class="row"><span class="label">Bonus-malus</span><span class="value" id="bonus">—</span></div>
+    <div class="row"><span class="label">Usage</span><span class="value" id="usage">—</span></div>
   </div>
 
   <div class="section">
-    <div class="section-title">🛡️ Formule choisie</div>
-    <div class="formule-badge">${data.formule}</div>
-    ${data.options.length > 0 ? `<div class="options">${data.options.map(o => `<span class="option-tag">✅ ${o}</span>`).join("")}</div>` : ""}
+    <div class="section-title">🛡️ Formule</div>
+    <div><span class="formule" id="formule">—</span></div>
+    <div class="options" id="options"></div>
   </div>
 
-  <div class="prix">
-    <div class="prix-annuel">${data.annuel} €/an</div>
-    <div class="prix-mensuel">soit ${data.mensuel} €/mois</div>
+  <div class="prix-box">
+    <div class="prix-annuel" id="annuel">—</div>
+    <div class="prix-mensuel" id="mensuel">—</div>
   </div>
-
-  <div class="valid">Devis valable 30 jours · Non contractuel</div>
+  <div class="footer">Devis valable 30 jours · Non contractuel</div>
 </div>
+
 <script>
-  // Ajuster la hauteur de l'iframe automatiquement
-  document.addEventListener("DOMContentLoaded", () => {
-    const h = document.body.scrollHeight;
-    if (window.openai?.requestDisplayMode) {
-      window.openai.requestDisplayMode({ mode: "inline" });
-    }
+function render(data) {
+  if (!data) return;
+  const d = data.toolOutput || data;
+  document.getElementById("ref").textContent     = "📌 Réf. " + (d.ref||"") + " · " + (d.date||"");
+  document.getElementById("vehicule").textContent = (d.marque||"") + " " + (d.modele||"") + " " + (d.annee||"");
+  document.getElementById("carburant").textContent = d.carburant||"";
+  document.getElementById("valeur").textContent   = (d.valeur||"") + " €";
+  document.getElementById("naissance").textContent = d.naissance||"";
+  document.getElementById("permis").textContent   = d.permis||"";
+  document.getElementById("bonus").textContent    = d.bonus + " " + (d.bonus <= 0.8 ? "🏆" : d.bonus <= 1 ? "✅" : "⚠️");
+  document.getElementById("usage").textContent    = d.usage||"";
+  document.getElementById("formule").textContent  = d.formule||"";
+  document.getElementById("annuel").textContent   = (d.annuel||0) + " €/an";
+  document.getElementById("mensuel").textContent  = "soit " + (d.mensuel||0) + " €/mois";
+  const optEl = document.getElementById("options");
+  optEl.innerHTML = "";
+  (d.options||[]).forEach(o => {
+    const s = document.createElement("span");
+    s.className = "opt"; s.textContent = "✅ " + o;
+    optEl.appendChild(s);
   });
+}
+
+// MCP Apps bridge (postMessage JSON-RPC)
+window.addEventListener("message", (e) => {
+  try {
+    const msg = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+    if (msg?.method === "ui/notifications/tool-result") {
+      render(msg.params);
+    }
+  } catch (_) {}
+});
+
+// window.openai legacy
+if (window.openai?.toolOutput) render({ toolOutput: window.openai.toolOutput });
+window.addEventListener("openai:set_globals", (e) => {
+  if (e.detail?.globals?.toolOutput) render({ toolOutput: e.detail.globals.toolOutput });
+});
 </script>
 </body>
 </html>`;
-}
 
 // ─── Serveur MCP ──────────────────────────────────────────────────
 function createServer() {
   const server = new McpServer({ name: "DevisAuto", version: "1.0.0" });
+
+  // Enregistrement du widget comme ressource MCP
+  server.resource(
+    "devis-widget",
+    "ui://widget/devis.html",
+    { mimeType: "text/html+skybridge" },
+    async () => ({
+      contents: [{
+        uri: "ui://widget/devis.html",
+        mimeType: "text/html+skybridge",
+        text: DEVIS_WIDGET_HTML,
+        _meta: { "openai/widgetPrefersBorder": true }
+      }]
+    })
+  );
 
   // OUTIL 1 — Véhicule par immatriculation
   server.tool(
@@ -114,7 +157,7 @@ function createServer() {
     async ({ immatriculation }) => ({
       content: [{
         type: "text",
-        text: `🚗 **DevisAuto — Identification véhicule**\n\nPlaque : **${immatriculation.toUpperCase()}**\n\n✅ Véhicule simulé :\n• Marque : Renault\n• Modèle : Clio V\n• Version : 1.0 TCe 90ch\n• Année : 2021\n• Carburant : Essence\n• Valeur : 18 500 €\n\n➡️ Continuez avec **devisauto_souscripteur**.`
+        text: `🚗 **Véhicule simulé pour ${immatriculation.toUpperCase()}**\n• Renault Clio V · 2021 · Essence · 18 500 €\n\n➡️ Continuez avec devisauto_souscripteur.`
       }]
     })
   );
@@ -134,7 +177,7 @@ function createServer() {
     async ({ marque, modele, version, annee, carburant, valeur_catalogue }) => ({
       content: [{
         type: "text",
-        text: `🚗 **${marque} ${modele}** (${annee}) enregistré ✅\n• Version : ${version}\n• Carburant : ${carburant}\n• Valeur : ${valeur_catalogue.toLocaleString("fr-FR")} €\n\n➡️ Continuez avec **devisauto_souscripteur**.`
+        text: `🚗 **${marque} ${modele}** (${annee}) · ${carburant} · ${valeur_catalogue.toLocaleString("fr-FR")} € ✅\n➡️ Continuez avec devisauto_souscripteur.`
       }]
     })
   );
@@ -142,31 +185,28 @@ function createServer() {
   // OUTIL 3 — Souscripteur
   server.tool(
     "devisauto_souscripteur",
-    "Collecter le profil du conducteur",
+    "Collecter le profil conducteur",
     {
-      date_naissance:        z.string().describe("JJ/MM/AAAA"),
-      date_permis:           z.string().describe("JJ/MM/AAAA"),
+      date_naissance:        z.string(),
+      date_permis:           z.string(),
       bonus_malus:           z.number().min(0.5).max(3.5),
       annees_assurance:      z.number().int().min(0),
       usage:                 z.enum(["Domicile-travail","Usage privé","Professionnel","Tournées"]),
       stationnement:         z.enum(["Garage privé","Parking collectif","Rue"]),
       conducteur_secondaire: z.boolean()
     },
-    async ({ date_naissance, date_permis, bonus_malus, annees_assurance, usage, stationnement, conducteur_secondaire }) => {
-      const label = bonus_malus <= 0.7 ? "🏆 Excellent" : bonus_malus <= 1.0 ? "✅ Bon" : bonus_malus <= 1.5 ? "⚠️ Standard" : "🔴 Malussé";
-      return {
-        content: [{
-          type: "text",
-          text: `👤 **Profil enregistré**\n• Naissance : ${date_naissance} · Permis : ${date_permis}\n• Bonus-malus : **${bonus_malus}** ${label}\n• Ancienneté : ${annees_assurance} ans\n• Usage : ${usage} · Stationnement : ${stationnement}\n• Conducteur secondaire : ${conducteur_secondaire ? "Oui" : "Non"}\n\n➡️ Continuez avec **devisauto_sinistralite**.`
-        }]
-      };
-    }
+    async ({ date_naissance, date_permis, bonus_malus, annees_assurance, usage, stationnement, conducteur_secondaire }) => ({
+      content: [{
+        type: "text",
+        text: `👤 **Profil enregistré** · Bonus : ${bonus_malus} · ${annees_assurance} ans\n➡️ Continuez avec devisauto_sinistralite.`
+      }]
+    })
   );
 
   // OUTIL 4 — Sinistralité
   server.tool(
     "devisauto_sinistralite",
-    "Historique de sinistres sur 3 ans",
+    "Historique de sinistres 3 ans",
     {
       nb_responsable:     z.number().int().min(0),
       nb_non_responsable: z.number().int().min(0),
@@ -175,51 +215,44 @@ function createServer() {
       retrait_permis:     z.boolean(),
       alcool_drogue:      z.boolean()
     },
-    async ({ nb_responsable, nb_non_responsable, nb_bris_glace, nb_vol_incendie, retrait_permis, alcool_drogue }) => {
-      const profil = (nb_responsable >= 2 || retrait_permis || alcool_drogue)
-        ? "🔴 Profil aggravé (+35%)"
-        : nb_responsable === 1 ? "🟡 Légère majoration (+15%)"
-        : "🟢 Excellent profil";
-      return {
-        content: [{
-          type: "text",
-          text: `📋 **Sinistralité enregistrée**\n• Responsables : ${nb_responsable} · Non-responsables : ${nb_non_responsable}\n• Bris de glace : ${nb_bris_glace} · Vol/Incendie : ${nb_vol_incendie}\n• Retrait permis : ${retrait_permis ? "⚠️ Oui" : "Non"} · Alcool/Drogues : ${alcool_drogue ? "🔴 Oui" : "Non"}\n\n${profil}\n\n➡️ Continuez avec **devisauto_formules**.`
-        }]
-      };
-    }
+    async ({ nb_responsable }) => ({
+      content: [{
+        type: "text",
+        text: `📋 **Sinistralité** · ${nb_responsable} responsable(s)\n➡️ Continuez avec devisauto_formules.`
+      }]
+    })
   );
 
   // OUTIL 5 — Formules
   server.tool(
     "devisauto_formules",
-    "Afficher les 4 formules d'assurance avec tarifs",
+    "Afficher les 4 formules avec tarifs",
     {
-      bonus_malus:     z.number(),
-      valeur_vehicule: z.number(),
-      annee_vehicule:  z.number().int(),
+      bonus_malus:              z.number(),
+      valeur_vehicule:          z.number(),
+      annee_vehicule:           z.number().int(),
       nb_sinistres_responsable: z.number().int().default(0)
     },
     async ({ bonus_malus, valeur_vehicule, annee_vehicule, nb_sinistres_responsable }) => {
-      const majoration = nb_sinistres_responsable >= 2 ? 1.35 : nb_sinistres_responsable === 1 ? 1.15 : 1.0;
-      const base = valeur_vehicule * 0.04 * bonus_malus * majoration;
-      const rc = Math.round(base * 0.50);
-      const t  = Math.round(base * 0.75);
-      const tp = Math.round(base * 0.90);
-      const tr = Math.round(base * 1.20);
-      const age = new Date().getFullYear() - annee_vehicule;
+      const maj  = nb_sinistres_responsable >= 2 ? 1.35 : nb_sinistres_responsable === 1 ? 1.15 : 1.0;
+      const base = valeur_vehicule * 0.04 * bonus_malus * maj;
+      const rc   = Math.round(base * 0.50);
+      const t    = Math.round(base * 0.75);
+      const tp   = Math.round(base * 0.90);
+      const tr   = Math.round(base * 1.20);
       return {
         content: [{
           type: "text",
-          text: `🛡️ **DevisAuto — Formules** (véhicule de ${age} ans)\n\n━━━━━━━━━━━━━━━━━━━━━━━━\n**1️⃣ Responsabilité Civile** — ${rc}€/an (${Math.round(rc/12)}€/mois)\n   Dommages aux tiers uniquement\n\n**2️⃣ Tiers** — ${t}€/an (${Math.round(t/12)}€/mois)\n   + Vol, Incendie, Bris de glace\n\n**3️⃣ Tiers Plus** — ${tp}€/an (${Math.round(tp/12)}€/mois)\n   + Dommages collision (franchise 300€)\n\n**4️⃣ Tous Risques ⭐** — ${tr}€/an (${Math.round(tr/12)}€/mois)\n   Couverture totale\n━━━━━━━━━━━━━━━━━━━━━━━━\n\n➡️ Choisissez et appelez **devisauto_devis_final**.`
+          text: `🛡️ **Formules DevisAuto**\n\n1️⃣ RC seule — ${rc}€/an (${Math.round(rc/12)}€/mois)\n2️⃣ Tiers — ${t}€/an (${Math.round(t/12)}€/mois)\n3️⃣ Tiers Plus — ${tp}€/an (${Math.round(tp/12)}€/mois)\n4️⃣ Tous Risques ⭐ — ${tr}€/an (${Math.round(tr/12)}€/mois)\n\n➡️ Appelez devisauto_devis_final avec la formule choisie.`
         }]
       };
     }
   );
 
-  // OUTIL 6 — Devis final avec UI widget
+  // OUTIL 6 — Devis final AVEC WIDGET UI
   server.tool(
     "devisauto_devis_final",
-    "Générer le devis final avec carte visuelle",
+    "Générer le devis final avec carte visuelle dans ChatGPT",
     {
       marque:                z.string(),
       modele:                z.string(),
@@ -236,13 +269,14 @@ function createServer() {
       assistance_0km:        z.boolean().default(false),
       vehicule_remplacement: z.boolean().default(false)
     },
-    async ({ marque, modele, annee, carburant, valeur_catalogue, date_naissance, date_permis, bonus_malus, usage, nb_sinistres, formule, protection_conducteur, assistance_0km, vehicule_remplacement }) => {
-      const taux = formule === "Responsabilité Civile" ? 0.02
-                 : formule === "Tiers"                 ? 0.03
-                 : formule === "Tiers Plus"            ? 0.036
-                 :                                       0.048;
-      const majoration = nb_sinistres >= 2 ? 1.35 : nb_sinistres === 1 ? 1.15 : 1.0;
-      let prime = valeur_catalogue * taux * bonus_malus * majoration;
+    async ({ marque, modele, annee, carburant, valeur_catalogue, date_naissance,
+             date_permis, bonus_malus, usage, nb_sinistres, formule,
+             protection_conducteur, assistance_0km, vehicule_remplacement }) => {
+
+      const taux = { "Responsabilité Civile": 0.02, "Tiers": 0.03, "Tiers Plus": 0.036, "Tous Risques": 0.048 }[formule];
+      const maj  = nb_sinistres >= 2 ? 1.35 : nb_sinistres === 1 ? 1.15 : 1.0;
+      let prime  = valeur_catalogue * taux * bonus_malus * maj;
+
       const options = [];
       if (protection_conducteur) { prime += 45; options.push("Protection conducteur +45€"); }
       if (assistance_0km)        { prime += 35; options.push("Assistance 0km +35€"); }
@@ -253,6 +287,7 @@ function createServer() {
       const ref     = `DA-${Date.now().toString().slice(-8)}`;
       const date    = new Date().toLocaleDateString("fr-FR");
 
+      // Données envoyées au widget via toolOutput
       const widgetData = {
         ref, date, marque, modele, annee, carburant,
         valeur: valeur_catalogue.toLocaleString("fr-FR"),
@@ -260,21 +295,17 @@ function createServer() {
         bonus: bonus_malus, usage, formule, options, annuel, mensuel
       };
 
-      const html = buildDevisWidget(widgetData);
-      const htmlB64 = Buffer.from(html).toString("base64");
-
       return {
-        content: [
-          {
-            type: "text",
-            text: `✅ **Devis ${ref} généré !**\n\n🚗 ${marque} ${modele} ${annee} · ${formule}\n💶 **${annuel} €/an** (${mensuel} €/mois)\n\n_Valable 30 jours · Non contractuel_`
-          }
-        ],
+        content: [{
+          type: "text",
+          text: `✅ **Devis ${ref}** — ${marque} ${modele} ${annee} · ${formule}\n💶 **${annuel} €/an** (${mensuel} €/mois) · Valable 30 jours`
+        }],
+        structuredContent: widgetData,
         _meta: {
-          "openai/widget": {
-            type: "iframe",
-            iframeUrl: `data:text/html;base64,${htmlB64}`,
-            height: 520
+          "openai/outputTemplate": "ui://widget/devis.html",
+          "openai/widgetCSP": {
+            "connect_domains": [],
+            "resource_domains": []
           }
         }
       };
