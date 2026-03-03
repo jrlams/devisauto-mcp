@@ -84,6 +84,93 @@ const WIDGET_HTML = [
   '<\/script></body></html>'
 ].join("\n");
 
+
+const WIDGET_IDENTIFICATION_HTML = [
+  '<!DOCTYPE html><html><head><meta charset="utf-8">',
+  '<style>',
+  '* { box-sizing: border-box; margin: 0; padding: 0; }',
+  'body { font-family: -apple-system, sans-serif; background: transparent; padding: 12px; }',
+  '.card { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.10); }',
+  '.header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }',
+  '.logo { font-size: 26px; }',
+  '.app-title { font-size: 17px; font-weight: 700; color: #1a1a1a; }',
+  '.app-sub { font-size: 11px; color: #999; }',
+  '.status-badge { display: flex; align-items: center; gap: 6px; background: #e8f5e9; border-radius: 8px; padding: 6px 12px; font-size: 12px; color: #2e7d32; font-weight: 600; margin-bottom: 16px; }',
+  '.dot { width: 8px; height: 8px; border-radius: 50%; background: #4caf50; }',
+  '.section-title { font-size: 10px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }',
+  '.row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px solid #f5f5f5; }',
+  '.row:last-child { border-bottom: none; }',
+  '.lbl { color: #777; }',
+  '.val { font-weight: 600; color: #222; }',
+  '.carburant-badge { display: inline-block; border-radius: 20px; padding: 2px 10px; font-size: 11px; font-weight: 700; }',
+  '.essence { background: #fff3e0; color: #e65100; }',
+  '.diesel { background: #e3f2fd; color: #1565c0; }',
+  '.electrique { background: #e8f5e9; color: #2e7d32; }',
+  '.hybride { background: #f3e5f5; color: #6a1b9a; }',
+  '.gpl { background: #fce4ec; color: #880e4f; }',
+  '.valeur-box { background: linear-gradient(135deg,#667eea,#764ba2); border-radius: 12px; padding: 14px; color: #fff; margin-top: 14px; text-align: center; }',
+  '.valeur-montant { font-size: 26px; font-weight: 800; }',
+  '.valeur-label { font-size: 11px; opacity: 0.8; margin-top: 2px; }',
+  '.next { background: #f5f5f5; border-radius: 8px; padding: 8px 12px; font-size: 11px; color: #888; margin-top: 12px; text-align: center; }',
+  '</style></head><body>',
+  '<div class="card">',
+  '<div class="header"><div class="logo">&#128663;</div>',
+  '<div><div class="app-title">DevisAuto</div><div class="app-sub">Identification vehicule</div></div></div>',
+  '<div class="status-badge"><div class="dot"></div><span id="status">Vehicule identifie</span></div>',
+  '<div class="section-title">&#128663; Vehicule</div>',
+  '<div class="row"><span class="lbl">Marque / Modele</span><span class="val" id="vehicule">-</span></div>',
+  '<div class="row"><span class="lbl">Version</span><span class="val" id="version">-</span></div>',
+  '<div class="row"><span class="lbl">Annee</span><span class="val" id="annee">-</span></div>',
+  '<div class="row"><span class="lbl">Carburant</span><span class="val" id="carburant">-</span></div>',
+  '<div class="valeur-box">',
+  '<div class="valeur-montant" id="valeur">-</div>',
+  '<div class="valeur-label">Valeur catalogue</div>',
+  '</div>',
+  '<div class="next">&#9654; Etape suivante : profil conducteur</div>',
+  '</div>',
+  '<script>',
+  'function carburantClass(c) {',
+  '  var m = { "Essence":"essence","Diesel":"diesel","Electrique":"electrique","Hybride":"hybride","GPL":"gpl" };',
+  '  return m[c] || "essence";',
+  '}',
+  'function render(d) {',
+  '  if (!d) return;',
+  '  document.getElementById("vehicule").textContent = (d.marque||"") + " " + (d.modele||"");',
+  '  document.getElementById("version").textContent = d.version||"";',
+  '  document.getElementById("annee").textContent = d.annee||"";',
+  '  var cel = document.getElementById("carburant");',
+  '  cel.textContent = d.carburant||"";',
+  '  cel.className = "val carburant-badge " + carburantClass(d.carburant||"");',
+  '  document.getElementById("valeur").textContent = (d.valeur_catalogue||0).toLocaleString("fr-FR") + " EUR";',
+  '}',
+  'window.addEventListener("message", function(e) {',
+  '  try {',
+  '    var m = typeof e.data==="string" ? JSON.parse(e.data) : e.data;',
+  '    if (m && m.method==="ui/notifications/tool-result") render(m.params&&(m.params.toolOutput||m.params));',
+  '  } catch(x) {}',
+  '});',
+  'try {',
+  '  if (window.openai && window.openai.toolOutput) render(window.openai.toolOutput);',
+  '  window.addEventListener("openai:set_globals", function(e) {',
+  '    if (e.detail&&e.detail.globals&&e.detail.globals.toolOutput) render(e.detail.globals.toolOutput);',
+  '  });',
+  '} catch(x) {}',
+  '<\/script></body></html>'
+].join("\n");
+
+server.resource(
+  "identification-widget",
+  "ui://widget/identification.html",
+  async () => ({
+    contents: [{
+      uri: "ui://widget/identification.html",
+      mimeType: "text/html+skybridge",
+      text: WIDGET_IDENTIFICATION_HTML
+    }]
+  })
+);
+
+
 function createServer() {
   const server = new McpServer({ name: "DevisAuto", version: "1.0.0" });
 
@@ -109,19 +196,33 @@ function createServer() {
   );
 
   server.tool(
-    "devisauto_vehicule_manuel",
-    "Saisir le vehicule manuellement",
-    {
-      marque: z.string(), modele: z.string(), version: z.string(),
-      annee: z.number().int(),
-      carburant: z.enum(["Essence","Diesel","Electrique","Hybride","GPL"]),
-      valeur_catalogue: z.number()
-    },
-    async ({ marque, modele, annee, carburant, valeur_catalogue }) => ({
-      content: [{ type: "text", text: marque + " " + modele + " (" + annee + ") - " + carburant + " - " + valeur_catalogue + " EUR\nContinuez avec devisauto_souscripteur." }]
-    })
-  );
+  "devisauto_vehicule_manuel",
+  "Saisir le vehicule manuellement",
+  {
+    marque: z.string(), modele: z.string(), version: z.string(),
+    annee: z.number().int(),
+    carburant: z.enum(["Essence","Diesel","Electrique","Hybride","GPL"]),
+    valeur_catalogue: z.number()
+  },
+  async ({ marque, modele, version, annee, carburant, valeur_catalogue }) => {
 
+    const toolOutput = { marque, modele, version, annee, carburant, valeur_catalogue };
+
+    return {
+      content: [{ 
+        type: "text", 
+        text: marque + " " + modele + " (" + annee + ") - " + carburant + " - " + valeur_catalogue + " EUR\nContinuez avec devisauto_souscripteur."
+      }],
+      toolOutput,
+      _meta: {
+        "openai/outputTemplate": "ui://widget/identification.html",
+        "openai/widgetCSP": { connect_domains: [], resource_domains: [] }
+      }
+    };
+  }
+);
+
+  
   server.tool(
     "devisauto_souscripteur",
     "Collecter le profil conducteur",
